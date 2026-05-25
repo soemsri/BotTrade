@@ -1,6 +1,6 @@
 # Uptrick: ML Kernel Regression & Trading EA (MQL5)
 
-โปรเจกต์นี้คือการแปลงอินดิเคเตอร์ยอดนิยมบน TradingView **"Uptrick: ML Kernel Regression" (Nadaraya-Watson Gaussian Kernel Estimator)** ไปเป็นเครื่องมือเทรดประสิทธิภาพสูงบนโปรแกรม **MetaTrader 5 (MT5)** ซึ่งประกอบด้วย **Custom Indicator (ตัวบ่งชี้แบบกำหนดเอง)** และ **Automated Trading EA (บอทเทรดอัตโนมัติ)** ที่ผ่านการพัฒนาและปรับปรุงประสิทธิภาพสูงสุดบนทองคำ (GOLD / XAUUSD) ไทม์เฟรม H4
+"Uptrick: ML Kernel Regression" (Nadaraya-Watson Gaussian Kernel Estimator)** ไปเป็นเครื่องมือเทรดประสิทธิภาพสูงบนโปรแกรม **MetaTrader 5 (MT5)** ซึ่งประกอบด้วย **Custom Indicator (ตัวบ่งชี้แบบกำหนดเอง)** และ **Automated Trading EA (บอทเทรดอัตโนมัติ)** ที่ผ่านการพัฒนาและปรับปรุงประสิทธิภาพสูงสุดบนทองคำ (GOLD / XAUUSD) ไทม์เฟรม H4
 
 เอกสารนี้รวบรวม **Knowhow, ทฤษฎีคณิตศาสตร์เบื้องหลัง, สถาปัตยกรรมบอทเทรด, ผลการทดสอบย้อนหลัง (Backtesting), และวิธีติดตั้งใช้งานแบบละเอียด** เพื่อเป็นคู่มือฉบับสมบูรณ์สำหรับผู้ใช้
 
