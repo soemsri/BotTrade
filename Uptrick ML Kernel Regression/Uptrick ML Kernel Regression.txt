@@ -1,0 +1,507 @@
+// This work is licensed under an Attribution-ShareAlike 4.0 International License (CC BY-SA 4.0) 
+// https://creativecommons.org/licenses/by-sa/4.0/
+// © Uptrick
+//@version=6
+
+
+//    ██╗   ██╗██████╗ ████████╗██████╗ ██╗ ██████╗██╗  ██╗
+//    ██║   ██║██╔══██╗╚══██╔══╝██╔══██╗██║██╔════╝██║ ██╔╝
+//    ██║   ██║██████╔╝   ██║   ██████╔╝██║██║     █████╔╝ 
+//    ██║   ██║██╔═══╝    ██║   ██╔══██╗██║██║     ██╔═██╗ 
+//    ╚██████╔╝██║        ██║   ██║  ██║██║╚██████╗██║  ██╗
+//     ╚═════╝ ╚═╝        ╚═╝   ╚═╝  ╚═╝╚═╝ ╚═════╝╚═╝  ╚═╝
+
+//@version=6
+indicator("Uptrick: ML Kernel Regression", overlay = true, max_bars_back = 500)
+
+
+// ============================================================
+//  SECTION 1 — INPUTS
+// ============================================================
+
+grpKernel = "╔═════ Kernel Regression ═════╗"
+i_length     = input.int(30,   "Lookback Window",        minval = 10, maxval = 300, group = grpKernel)
+i_bandwidth  = input.float(8.0,"Base Bandwidth (h)",     minval = 0.5, step = 0.5,  group = grpKernel)
+i_adaptive   = input.bool(true, "Adaptive Bandwidth (ATR-scaled)", group = grpKernel)
+i_atrLen     = input.int(14,   "ATR Length (adaptive)",  minval = 5,                group = grpKernel)
+i_smooth     = input.int(3,    "MA Output Smoothing",    minval = 1, maxval = 20,   group = grpKernel)
+
+grpBands = "╔═══════ Residual Bands ═══════╗"
+i_bandMult   = input.float(1, "Band Multiplier (σ)",  minval = 0.5, step = 0.1,  group = grpBands)
+i_bandLen    = input.int(24,    "Band Lookback (σ)",    minval = 10, maxval = 200,  group = grpBands)
+i_bandSmooth = input.int(5,     "Band Smoothing",       minval = 1,  maxval = 20,   group = grpBands)
+
+grpVis = "╔═════════ Visuals ═════════╗"
+VisualMode   = input.string("Bands", "Visual Mode", ["Bands", "Single Line", "Trail"], group = grpVis)
+i_showBars   = input.bool(true,  "Color Bars",          group = grpVis)
+i_showFill   = input.bool(true,  "Fill Bands",          group = grpVis)
+i_showTable  = input.bool(true,  "Show Dashboard",      group = grpVis)
+i_gradSmooth = input.int(1,      "Color Gradient Smooth", minval = 1, maxval = 30, group = grpVis)
+
+grpAlert = "╔═════════ Alerts ════════╗"
+i_alertBull  = input.bool(true, "Alert: Cross Above Upper Band", group = grpAlert)
+i_alertBear  = input.bool(true, "Alert: Cross Below Lower Band", group = grpAlert)
+
+// ============================================================
+//  SECTION 2 — PALETTE
+// ============================================================
+
+grpColors = grpVis
+theme = input.string(
+     "Classic",
+     "Theme",
+     options = [
+         "Classic",
+         "Cyber Aqua",
+         "Crimson Pulse",
+         "Royal Purple",
+         "Emerald Night",
+         "Minimal Mono",
+         "Classic Emerald"
+     ],
+     group = grpColors
+)
+
+// ------------------------------------------------------------
+//  BASE COLORS PER THEME
+// ------------------------------------------------------------
+
+bullBase =
+     theme == "Classic"   ? #5CF0D7 :
+     theme == "Cyber Aqua"     ? #00E5FF :
+     theme == "Crimson Pulse"  ? color.rgb(0, 207, 254) :
+     theme == "Royal Purple"   ? #c5aff5 :
+     theme == "Emerald Night"  ? #00E676 :
+     theme == "Minimal Mono"   ? #FFFFFF :
+                                 color.rgb(0, 255, 0)
+
+bearBase =
+     theme == "Classic"   ? #B32AC3 :
+     theme == "Cyber Aqua"     ? #FF2E63 :
+     theme == "Crimson Pulse"  ? #e0f70e :
+     theme == "Royal Purple"   ? color.rgb(217, 0, 255) :
+     theme == "Emerald Night"  ? #FF5252 :
+     theme == "Minimal Mono"   ? color.rgb(92, 92, 92) :
+                                 #ff0000
+
+bgBase =
+     theme == "Classic"   ? #0D0D0D :
+     theme == "Cyber Aqua"     ? #060B10 :
+     theme == "Crimson Pulse"  ? #12080C :
+     theme == "Royal Purple"   ? #0F0B1A :
+     theme == "Emerald Night"  ? #07110B :
+     theme == "Minimal Mono"   ? #000000 :
+                                 #121212
+
+frameBase =
+     theme == "Classic"   ? #1E1E2E :
+     theme == "Cyber Aqua"     ? #1A2A33 :
+     theme == "Crimson Pulse"  ? #2A0F18 :
+     theme == "Royal Purple"   ? #241A3A :
+     theme == "Emerald Night"  ? #153322 :
+     theme == "Minimal Mono"   ? #1C1C1C :
+                                 #2A2A2A
+
+neutralBase =
+     theme == "Classic"   ? #888888 :
+     theme == "Cyber Aqua"     ? #7FAEC2 :
+     theme == "Crimson Pulse"  ? #9E7680 :
+     theme == "Royal Purple"   ? #9C8FD9 :
+     theme == "Emerald Night"  ? #7FAF9B :
+     theme == "Minimal Mono"   ? #777777 :
+                                 #9E9E9E
+
+textBase = #FFFFFF
+
+// ------------------------------------------------------------
+//  EXPORTED COLORS (EXACT VARIABLE NAMES)
+// ------------------------------------------------------------
+
+C_BULL       = color.new(bullBase, 0)
+C_BULL_60    = color.new(bullBase, 60)
+C_BULL_80    = color.new(bullBase, 80)
+
+C_BEAR       = color.new(bearBase, 0)
+C_BEAR_60    = color.new(bearBase, 60)
+C_BEAR_80    = color.new(bearBase, 80)
+
+C_TEXT       = color.new(textBase, 0)
+C_BG         = color.new(bgBase, 0)
+C_FRAME      = color.new(frameBase, 0)
+C_NEUTRAL_MA = color.new(neutralBase, 0)
+// ============================================================
+//  SECTION 3 — NADARAYA-WATSON KERNEL REGRESSION (ML CORE)
+// ============================================================
+//
+//  True non-parametric ML estimator.
+//  Kernel: Gaussian  K(u) = exp(-u² / 2h²)
+//  Bandwidth: optionally scaled by normalised ATR so the
+//  kernel widens in volatile regimes → adaptive smoothing.
+//
+//  ŷ = Σ K(i) · close[i]  /  Σ K(i)   for i = 0 … length-1
+//
+//  This is evaluated at the current (most recent) bar,
+//  treating each historical bar's lag (i) as the distance
+//  in the feature space. No future data is used.
+
+// --- adaptive bandwidth computation ---
+rawATR     = ta.atr(i_atrLen)            // ATR via shared lib
+atrNorm    = rawATR / close              // normalise to price %
+atrFactor  = ta.ema(atrNorm, i_atrLen)
+// scale: higher vol → wider bandwidth (smoother)
+adaptScale = i_adaptive ? (1.0 + atrFactor * 200.0) : 1.0
+h          = i_bandwidth * adaptScale
+
+// --- kernel regression loop ---
+nwSum    = 0.0
+nwWeight = 0.0
+for i = 0 to i_length - 1
+    // Gaussian kernel weight based on lag distance
+    kw      = math.exp(-math.pow(i, 2) / (2.0 * math.pow(h, 2)))
+    nwSum   += kw * close[i]
+    nwWeight += kw
+
+nwRaw = nwSum / nwWeight
+
+// Smooth the output to reduce micro-jitter (still non-repainting)
+kernelMA = ta.ema(nwRaw, i_smooth)
+
+// ============================================================
+//  SECTION 4 — RESIDUAL BANDS (σ of price vs kernel)
+// ============================================================
+//
+//  Residual = close - kernelMA
+//  σ  = rolling std-dev of residuals over bandLen
+//  Upper band = kernelMA + mult * σ
+//  Lower band = kernelMA − mult * σ
+
+residual = close - kernelMA
+sigmaRaw = ta.stdev(residual, i_bandLen)
+sigma    = ta.ema(sigmaRaw, i_bandSmooth)   // smooth the band width
+
+upperBand = kernelMA + i_bandMult * sigma
+lowerBand = kernelMA - i_bandMult * sigma
+
+// ============================================================
+//  SECTION 5 — STATE & SIGNAL (confirmed, non-repainting)
+// ============================================================
+
+var int lastState = 0
+
+if barstate.isconfirmed
+    if close > upperBand
+        lastState := 1
+    else if close < lowerBand
+        lastState := -1
+    // else: hold last state — no neutral painted
+
+isBull = lastState == 1
+isBear = lastState == -1
+
+// crossover/under alerts (use confirmed bar logic)
+crossBull = ta.crossover(close,  upperBand)
+crossBear = ta.crossunder(close, lowerBand)
+
+// ============================================================
+//  STATE COLOR (NO GRADIENT) — uses template colors
+// ============================================================
+
+// Pick solid colors from the selected template palette
+solidCol     = isBull ? C_BULL : C_BEAR
+solidCol60   = isBull ? C_BULL_60 : C_BEAR_60
+solidCol80   = isBull ? C_BULL_80 : C_BEAR_80
+
+// Optional: if you want bars to ALWAYS be bull/bear (never neutral)
+barcolor(i_showBars ? solidCol : na, title="Bar Color")
+plotcandle(
+     open,
+     high,
+     low,
+     close,
+     title="State Candles",
+     color       = i_showBars ? solidCol : na,
+     wickcolor  = i_showBars ? solidCol : na,
+     bordercolor= i_showBars ? solidCol : na,
+     force_overlay = true
+)
+// Use these for plots/fills instead of gradColor / gradColor60 / gradColor80
+
+
+
+
+
+
+
+
+
+
+
+
+
+// ============================================================
+//  SECTION 7 — PLOTS
+// ============================================================
+
+// Hidden price plot used for gradient fills
+pPrice = plot(close, title="Price (hidden)", display=display.none)
+
+// ───── Single Line (middle only) ─────
+pMid = plot(
+     VisualMode == "Single Line" ? kernelMA : na,
+     title="NW Kernel MA",
+     color=solidCol,
+     linewidth=2
+)
+
+// Gradient from midline → price
+// Strongest near midline (solidCol60), weakest near price (very transparent)
+fill(
+     pMid,
+     pPrice,
+     kernelMA,
+     close,
+     color.new(solidCol, 75),
+     color.new(solidCol, 100),
+     title="Single Line Gradient"
+)
+
+// ───── Bands (middle + upper/lower + band fill) ─────
+pUpper = plot(
+     VisualMode == "Bands" ? upperBand : na,
+     title="Upper Band (σ)",
+     color=solidCol60,
+     linewidth=1
+)
+
+pLower = plot(
+     VisualMode == "Bands" ? lowerBand : na,
+     title="Lower Band (σ)",
+     color=solidCol60,
+     linewidth=1
+)
+
+fill(
+     pUpper,
+     pLower,
+     upperBand,
+     lowerBand,
+     i_showFill ? solidCol80 : na,
+     i_showFill ? solidCol80 : na,
+     title="Band Fill"
+)
+
+// ───── Trail (only lower band in bull, only upper band in bear) ─────
+pTrailBull = plot(
+     VisualMode == "Trail" ? lowerBand : na,
+     title="Trail Lower (Bull)",
+     color=isBull ? C_BULL_60: na,
+     linewidth=5
+)
+
+pTrailBear = plot(
+     VisualMode == "Trail"  ? upperBand : na,
+     title="Trail Upper (Bear)",
+     color= isBear ? C_BEAR_60:na,
+     linewidth=5
+)
+
+// Gradient trail → price (strong near trail line, weak near price)
+fill(
+     pTrailBull,
+     pPrice,
+     lowerBand,
+     close,
+     isBull ? C_BULL_60: na,
+     isBull ? color.new(C_BULL, 100):na,
+     title="Bull Trail Gradient"
+)
+
+fill(
+     pTrailBear,
+     pPrice,
+     upperBand,
+     close,
+     isBear? C_BEAR_60:na,
+     isBear? color.new(C_BEAR, 100): na,
+     title="Bear Trail Gradient"
+)
+
+// ───── Bar coloring (all modes) ─────
+barcolor(i_showBars ? solidCol : na, title="Bar Color")
+
+
+
+
+
+
+
+
+
+// ============================================================
+//  SECTION 8 — SIGNAL LABELS (entry flips only)
+// ============================================================
+grpLabels = grpVis
+
+var int prevState = 0
+labelOffsetMult = input.float(0.50, "Offset Mult (ATR)", minval=0.0, step=0.05, group=grpLabels)
+
+// Vertical offset relative to the middle line
+labelOffset = ta.atr(14) * labelOffsetMult   // adjust multiplier if you want more spacing
+// ============================================================
+//  LABEL ANCHOR MODE (High/Low vs Main Line vs Bands)
+// ============================================================
+
+labelAnchor = input.string(
+     "Main Line",
+     "Label Anchor",
+     options = ["High/Low", "Main Line", "Bands"],
+     group = grpLabels
+)
+
+baseLongY =
+     labelAnchor == "High/Low" ? low :
+     labelAnchor == "Bands"    ? lowerBand :
+                                 kernelMA
+
+baseShortY =
+     labelAnchor == "High/Low" ? high :
+     labelAnchor == "Bands"    ? upperBand :
+                                 kernelMA
+
+// Apply offset for ALL modes
+longY  = baseLongY  - labelOffset   // below anchor
+shortY = baseShortY + labelOffset   // above anchor
+
+if barstate.isconfirmed
+    if lastState != prevState and prevState != 0
+        if lastState == 1
+            label.new(
+                bar_index,
+                longY,
+                "𝐁𝐔𝐘",
+                style     = label.style_label_up,
+                color     = C_BULL,
+                textcolor = C_BG,
+                size      = size.normal
+            )
+        else if lastState == -1
+            label.new(
+                bar_index,
+                shortY,
+                "𝐒𝐄𝐋𝐋",
+                style     = label.style_label_down,
+                color     = C_BEAR,
+                textcolor = color.white,
+                size      = size.normal
+            )
+    prevState := lastState
+// ============================================================
+//  SECTION 9 — ALERTS
+// ============================================================
+
+alertcondition(i_alertBull and crossBull,
+     title   = "NW Kernel — Bullish Breakout",
+     message = "Uptrick NW Kernel MA: Close crossed ABOVE upper band → Bullish signal.")
+
+alertcondition(i_alertBear and crossBear,
+     title   = "NW Kernel — Bearish Breakdown",
+     message = "Uptrick NW Kernel MA: Close crossed BELOW lower band → Bearish signal.")
+
+// ============================================================
+//  SECTION 10 — DASHBOARD TABLE
+// ============================================================
+// ─────────────────────────────────────────────────────────────
+//  DASHBOARD (styled + subtle vertical gradient)
+//  Notes:
+//  • create table ONCE (var), then only update cells on last bar
+//  • gradient = more visible at header, fades toward bottom
+//  • very transparent, nothing loud
+// ─────────────────────────────────────────────────────────────
+var table tbl = table.new(position.bottom_right, 2, 7,
+     bgcolor       = na,
+     frame_color   = C_FRAME,
+     frame_width   = 1,
+     border_color  = color.new(C_FRAME, 65),
+     border_width  = 1)
+
+grad(_base, _row, _rows, _minT, _maxT) =>
+    // _row: 0.._rows-1
+    float t = _rows <= 1 ? _minT : (_minT + (_maxT - _minT) * (_row / float(_rows - 1)))
+    color.new(_base, int(t))
+
+if i_showTable and barstate.islast
+    int rows = 7
+
+    // subtle gradient backgrounds (top -> bottom)
+    color bgTop = grad(C_BG,    0, rows, 86, 95)   // slightly stronger at top
+    color bgMid = grad(C_BG,    1, rows, 86, 95)
+    color bg2   = grad(C_BG,    2, rows, 86, 95)
+    color bg3   = grad(C_BG,    3, rows, 86, 95)
+    color bg4   = grad(C_BG,    4, rows, 86, 95)
+    color bg5   = grad(C_BG,    5, rows, 86, 95)
+    color bgBot = grad(C_BG,    6, rows, 86, 95)
+
+    // header bar, still transparent but a bit more defined
+    color hdrBg = color.new(C_FRAME, 75)
+
+    // compute signal text/colors
+    sigColor = isBull ? C_BULL : C_BEAR
+    sigText  = isBull ? "▲  BULLISH" : "▼  BEARISH"
+
+    // clear + rebuild cells (simple + consistent styling)
+    // Header row
+    table.cell(tbl, 0, 0, "ML KERNEL MA",
+         text_color=C_TEXT, text_size=size.normal, bgcolor=hdrBg,
+         text_halign=text.align_left, text_font_family=font.family_monospace)
+    table.cell(tbl, 1, 0, "VALUE",
+         text_color=C_TEXT, text_size=size.normal, bgcolor=hdrBg,
+         text_halign=text.align_right, text_font_family=font.family_monospace)
+
+    // Row 1
+    table.cell(tbl, 0, 1, "Signal",
+         text_color=C_TEXT, text_size=size.normal, bgcolor=bgMid,
+         text_halign=text.align_left, text_font_family=font.family_monospace)
+    table.cell(tbl, 1, 1, sigText,
+         text_color=sigColor, text_size=size.normal, bgcolor=bgMid,
+         text_halign=text.align_right, text_font_family=font.family_monospace)
+
+    // Row 2
+    table.cell(tbl, 0, 2, "Kernel MA",
+         text_color=C_TEXT, text_size=size.normal, bgcolor=bg2,
+         text_halign=text.align_left, text_font_family=font.family_monospace)
+    table.cell(tbl, 1, 2, str.tostring(kernelMA, "#.##"),
+         text_color=solidCol, text_size=size.normal, bgcolor=bg2,
+         text_halign=text.align_right, text_font_family=font.family_monospace)
+
+    // Row 3
+    table.cell(tbl, 0, 3, "Upper Band",
+         text_color=C_TEXT, text_size=size.normal, bgcolor=bg3,
+         text_halign=text.align_left, text_font_family=font.family_monospace)
+    table.cell(tbl, 1, 3, str.tostring(upperBand, "#.##"),
+         text_color=C_BULL, text_size=size.normal, bgcolor=bg3,
+         text_halign=text.align_right, text_font_family=font.family_monospace)
+
+    // Row 4
+    table.cell(tbl, 0, 4, "Lower Band",
+         text_color=C_TEXT, text_size=size.normal, bgcolor=bg4,
+         text_halign=text.align_left, text_font_family=font.family_monospace)
+    table.cell(tbl, 1, 4, str.tostring(lowerBand, "#.##"),
+         text_color=C_BEAR, text_size=size.normal, bgcolor=bg4,
+         text_halign=text.align_right, text_font_family=font.family_monospace)
+
+    // Row 5
+    table.cell(tbl, 0, 5, "Band Width σ",
+         text_color=C_TEXT, text_size=size.normal, bgcolor=bg5,
+         text_halign=text.align_left, text_font_family=font.family_monospace)
+    table.cell(tbl, 1, 5, str.tostring(sigma, "#.##"),
+         text_color=C_TEXT, text_size=size.normal, bgcolor=bg5,
+         text_halign=text.align_right, text_font_family=font.family_monospace)
+
+    // Row 6
+    bwLabel = i_adaptive ? str.tostring(h, "#.##") + "  (adaptive)" : str.tostring(h, "#.##")
+    table.cell(tbl, 0, 6, "Bandwidth h",
+         text_color=C_TEXT, text_size=size.normal, bgcolor=bgBot,
+         text_halign=text.align_left, text_font_family=font.family_monospace)
+    table.cell(tbl, 1, 6, bwLabel,
+         text_color=C_TEXT, text_size=size.normal, bgcolor=bgBot,
+         text_halign=text.align_right, text_font_family=font.family_monospace)

@@ -1,0 +1,47 @@
+[
+    {
+        "name": "1. Fixed SL 250 pts (1min OHLC - No BE)",
+        "InpLookback": 30,
+        "InpBandMult": 1.0,
+        "InpEnableBreakeven": "false",
+        "InpEnableTrailing": "false",
+        "InpSlMode": 1,
+        "InpFixedSlPoints": 250,
+        "Total Net Profit": "-6.25",
+        "Profit Factor": "0.78",
+        "Total Trades": "157",
+        "Win Rate (Long)": "29.49%",
+        "Win Rate (Short)": "26.58%",
+        "Maximal Drawdown": "0.00"
+    },
+    {
+        "name": "2. Fixed SL 250 pts (1min OHLC - BE On)",
+        "InpLookback": 30,
+        "InpBandMult": 1.0,
+        "InpEnableBreakeven": "true",
+        "InpEnableTrailing": "false",
+        "InpSlMode": 1,
+        "InpFixedSlPoints": 250,
+        "Total Net Profit": "-6.38",
+        "Profit Factor": "0.71",
+        "Total Trades": "157",
+        "Win Rate (Long)": "46.15%",
+        "Win Rate (Short)": "40.51%",
+        "Maximal Drawdown": "0.00"
+    },
+    {
+        "name": "3. Fixed SL 250 pts (1min OHLC - BE & TS On)",
+        "InpLookback": 30,
+        "InpBandMult": 1.0,
+        "InpEnableBreakeven": "true",
+        "InpEnableTrailing": "true",
+        "InpSlMode": 1,
+        "InpFixedSlPoints": 250,
+        "Total Net Profit": "-4.71",
+        "Profit Factor": "0.77",
+        "Total Trades": "157",
+        "Win Rate (Long)": "46.15%",
+        "Win Rate (Short)": "40.51%",
+        "Maximal Drawdown": "0.00"
+    }
+]

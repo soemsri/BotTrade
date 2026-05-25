@@ -1,0 +1,37 @@
+[
+    {
+        "name": "Idea 1: BandMult 2.0 + Fixed SL 300",
+        "InpLookback": 30,
+        "InpBandMult": 2.0,
+        "InpEnableBreakeven": "false",
+        "InpEnableTrailing": "true",
+        "InpSlMode": 1,
+        "InpFixedSlPoints": 300,
+        "Total Net Profit": "-56.85",
+        "Profit Factor": "0.60",
+        "Total Trades": "547",
+        "Win Rate (Long)": "24.91%",
+        "Win Rate (Short)": "27.01%",
+        "Maximal Drawdown": "0.00"
+    },
+    {
+        "name": "Idea 2: Lookback 50 + BandMult 1.5",
+        "InpLookback": 50,
+        "InpBandMult": 1.5,
+        "InpEnableBreakeven": "false",
+        "InpEnableTrailing": "true",
+        "InpSlMode": 1,
+        "InpFixedSlPoints": 250,
+        "Error": "Timeout"
+    },
+    {
+        "name": "Idea 3: BandMult 1.8 + Dynamic SL",
+        "InpLookback": 30,
+        "InpBandMult": 1.8,
+        "InpEnableBreakeven": "false",
+        "InpEnableTrailing": "true",
+        "InpSlMode": 0,
+        "InpFixedSlPoints": 250,
+        "Error": "Timeout"
+    }
+]
