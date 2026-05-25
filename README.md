@@ -160,9 +160,7 @@ Uptrick ML Kernel Regression/
 ├── parse_report.py                      # สคริปต์ Python สำหรับสกัดข้อมูลจาก HTML รายงานผลลัพธ์
 │
 ├── Uptrick_Report.png                   # ภาพผลสรุปแถบสถิติของกลยุทธ์
-├── Uptrick_Report-hst.png               # ภาพกราฟประวัติการเติบโตยอด Balance/Equity
-│
-└── คลิปสอน/                             # โฟลเดอร์เก็บสื่อสอนการเรียนรู้วิธีตั้งค่าเพิ่มเติม
+└── Uptrick_Report-hst.png               # ภาพกราฟประวัติการเติบโตยอด Balance/Equity
 ```
 
 ---
