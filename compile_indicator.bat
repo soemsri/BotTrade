@@ -1,0 +1,1 @@
+"C:\Program Files\MetaTrader 5 EXNESS\MetaEditor64.exe" /compile:"C:\Users\PC\AppData\Roaming\MetaQuotes\Terminal\53785E099C927DB68A545C249CDBCE06\MQL5\Indicators\Lorentzian_Classification.mq5" /log:"D:\BotTrade\compile_log_lorentzian.txt"
