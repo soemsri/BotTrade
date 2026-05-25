@@ -11,7 +11,7 @@
 //| Input Parameters                                                 |
 //+------------------------------------------------------------------+
 input group "╔═══════ LINE Messaging API Settings ═══════╗"
-input string   InpLineAccessToken = "your token here"; // Channel Access Token
+input string   InpLineAccessToken = "maIdVxEOzBlYe+Rc3jwzvoTOLho8LhxOdmLaxdRibTDpZ0yZrw0A1PqF6sOs761qHbxlw74n/CJuBzzwLL3cLyCLjSXv/VBHms5jB8OTMUD8pUjkK6Wc6YEOZj7LePjdGsud9yEQ3Z/4YO0inNQTLgdB04t89/1O/w1cDnyilFU="; // Channel Access Token
 input string   InpLineTargetId    = ""; // LINE Target ID (Group ID or User ID, optional)
 
 //+------------------------------------------------------------------+
