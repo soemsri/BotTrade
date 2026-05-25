@@ -157,7 +157,6 @@ Uptrick ML Kernel Regression/
 ├── Uptrick_Backtest_Report.html         # รายงานสรุปผลลัพธ์การ Backtest ฉบับจริงจาก MT5 (Lot 10.0)
 ├── parsed_metrics.json                  # ผลลัพธ์ข้อมูลสถิติ Backtest ที่สกัดข้อมูลมาแล้ว
 │
-├── chat.txt                             # ไฟล์บันทึกคำสั่งและข้อความตอบรับทั้งหมดในโปรเจกต์
 ├── parse_report.py                      # สคริปต์ Python สำหรับสกัดข้อมูลจาก HTML รายงานผลลัพธ์
 │
 ├── Uptrick_Report.png                   # ภาพผลสรุปแถบสถิติของกลยุทธ์
