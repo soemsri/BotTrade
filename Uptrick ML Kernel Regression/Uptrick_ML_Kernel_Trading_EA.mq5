@@ -40,6 +40,12 @@ enum ENUM_SL_MODE {
    SL_MODE_FIXED   // Fixed Stop Loss in points
 };
 
+enum ENUM_TRADE_DIRECTION {
+   TRADE_DIR_BOTH,        // Long & Short
+   TRADE_DIR_LONG,        // Long Only (Buy Only)
+   TRADE_DIR_SHORT        // Short Only (Sell Only)
+};
+
 enum ENUM_STRATEGY_MODE {
    STRAT_BREAKOUT,        // Breakout (Trend Following)
    STRAT_MEAN_REVERSION   // Mean Reversion (Counter-Trend)
@@ -55,6 +61,7 @@ input ENUM_STRATEGY_MODE InpStrategyMode = STRAT_MEAN_REVERSION; // Strategy Mod
 //--- Trading Settings
 input group "╔═════════ Trading Settings ═════════╗"
 input double         InpLotSize         = 0.1;         // Lot Size
+input ENUM_TRADE_DIRECTION InpTradeDirection = TRADE_DIR_BOTH; // Trade Direction (Both / Long Only / Short Only)
 input ENUM_SL_MODE   InpSlMode          = SL_MODE_FIXED;// Stop Loss Mode
 input int            InpFixedSlPoints   = 250;         // Fixed Stop Loss (points)
 input double         InpRiskRewardRatio = 2.0;         // Risk-Reward Ratio (e.g. 2.0 = RR 1:2)
@@ -579,9 +586,19 @@ void OnTick()
       }
    }
 
-   // Execute trades based on signals
-   if(isBuySignal)
-   {
+    // Trade Direction Filter
+    if(InpTradeDirection == TRADE_DIR_LONG)
+    {
+       isSellSignal = false;
+    }
+    else if(InpTradeDirection == TRADE_DIR_SHORT)
+    {
+       isBuySignal = false;
+    }
+
+    // Execute trades based on signals
+    if(isBuySignal)
+    {
       Print("EA Signal: BUY Signal Confirmed!");
       
       // Close active Sell positions

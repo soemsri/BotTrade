@@ -10,9 +10,16 @@
 //--- Include Trade library
 #include <Trade\Trade.mqh>
 
+enum ENUM_TRADE_DIRECTION {
+   TRADE_DIR_BOTH,        // Long & Short
+   TRADE_DIR_LONG,        // Long Only (Buy Only)
+   TRADE_DIR_SHORT        // Short Only (Sell Only)
+};
+
 //--- Input Parameters
 input group "EA Trading Settings"
 input double   InpLotSize             = 0.1;               // Lot Size
+input ENUM_TRADE_DIRECTION InpTradeDirection = TRADE_DIR_BOTH; // Allowed Trade Direction
 input ulong    InpMagicNumber         = 0x87E215B3;        // Magic Number
 input int      InpSlippage            = 30;                // Slippage (points)
 input bool     InpEnableBreakeven     = true;              // Enable 1:1 Breakeven
@@ -172,7 +179,7 @@ void OnTick() {
       CheckPositionsCount(totalBuy, totalSell);
       
       // BUY Signal: Color transitions to 0 (Green) from non-green
-      if(closedBarColor == 0 && prevBarColor != 0) {
+      if(closedBarColor == 0 && prevBarColor != 0 && (InpTradeDirection == TRADE_DIR_BOTH || InpTradeDirection == TRADE_DIR_LONG)) {
          if(totalBuy == 0) {
             // Close any open SELL positions first
             CloseAllPositions(POSITION_TYPE_SELL);
@@ -198,7 +205,7 @@ void OnTick() {
       }
       
       // SELL Signal: Color transitions to 1 (Red) from non-red
-      if(closedBarColor == 1 && prevBarColor != 1) {
+      if(closedBarColor == 1 && prevBarColor != 1 && (InpTradeDirection == TRADE_DIR_BOTH || InpTradeDirection == TRADE_DIR_SHORT)) {
          if(totalSell == 0) {
             // Close any open BUY positions first
             CloseAllPositions(POSITION_TYPE_BUY);
