@@ -1,0 +1,63 @@
+name: PerfMon Sync Workflow
+
+on:
+  push:
+    branches:
+      - '**' # รันทุกๆ Branch ที่มีการส่งงาน
+
+jobs:
+  sync-perfmon:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0 # ดึงประวัติทั้งหมดเพื่อคำนวณสถิติ
+
+      - name: Extract Commit Statistics & Sync
+        run: |
+          # 1. เช็กกับเซิร์ฟเวอร์ก่อนว่าเคยซิงค์ข้อมูลมาก่อนหรือยัง
+          PERFMON_URL="http://splatter-provolone-variety.ngrok-free.dev"
+          
+          STATUS_RESPONSE=$(curl -s "$PERFMON_URL/api/webhook/status?github_username=${{ github.actor }}")
+          echo "Server status response: $STATUS_RESPONSE"
+          
+          # ตรวจสอบว่ามีคำว่า active ใน response หรือไม่ (ถ้าไม่ แสดงว่าเป็น first_sync หรือเพิ่งทำครั้งแรก)
+          if [[ "$STATUS_RESPONSE" == *"active"* ]]; then
+            echo "--- Active mode: syncing only current push commits ---"
+            COMMIT_LIST=$(git rev-list ${{ github.event.before }}..${{ github.event.after }} 2>/dev/null || git rev-list -n 3 HEAD)
+          else
+            echo "--- First sync mode: syncing full history (all commits) ---"
+            COMMIT_LIST=$(git rev-list HEAD)
+          fi
+          
+          # 2. รวบรวมข้อมูล Commit ที่ต้องการส่ง
+          COMMITS_JSON="["
+          FIRST=true
+          
+          for commit in $COMMIT_LIST; do
+            if [ "$FIRST" = true ]; then
+              FIRST=false
+            else
+              COMMITS_JSON="$COMMITS_JSON,"
+            fi
+            
+            AUTHOR_NAME=$(git log -1 --format='%an' $commit)
+            AUTHOR_EMAIL=$(git log -1 --format='%ae' $commit)
+            # ป้องกันปัญหาเครื่องหมายคำพูดเบิ้ล (double quotes) ใน Message ด้วยการ escape
+            MESSAGE=$(git log -1 --format='%s' $commit | sed 's/"/\"/g' | sed 's/\/\\/g')
+            TIMESTAMP=$(git log -1 --format='%ai' $commit)
+            
+            # คำนวณจำนวนบรรทัดที่ เพิ่ม (+) และ ลบ (-)
+            ADDITIONS=$(git diff-tree --no-commit-id --numstat -r $commit | awk '{add+=$1} END {print add+0}')
+            DELETIONS=$(git diff-tree --no-commit-id --numstat -r $commit | awk '{del+=$2} END {print del+0}')
+            
+            COMMITS_JSON="$COMMITS_JSON{\"id\":\"$commit\",\"message\":\"$MESSAGE\",\"timestamp\":\"$TIMESTAMP\",\"lines_added\":$ADDITIONS,\"lines_deleted\":$DELETIONS}"
+          done
+          COMMITS_JSON="$COMMITS_JSON]"
+          
+          # 3. จัดเตรียม JSON Payload ส่งไปยังระบบ PerfMon
+          PAYLOAD="{\"ref\":\"${{ github.ref }}\",\"github_username\":\"${{ github.actor }}\",\"commits\":$COMMITS_JSON}"
+          
+          # 4. ยิงข้อมูลส่งมายังเครื่องผ่าน Webhook URL
+          curl -X POST             -H "Content-Type: application/json"             -d "$PAYLOAD"             "$PERFMON_URL/api/webhook"
