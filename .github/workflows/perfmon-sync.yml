@@ -19,7 +19,7 @@ jobs:
           # 1. เช็กกับเซิร์ฟเวอร์ก่อนว่าเคยซิงค์ข้อมูลมาก่อนหรือยัง
           PERFMON_URL="http://splatter-provolone-variety.ngrok-free.dev"
           
-          STATUS_RESPONSE=$(curl -s "$PERFMON_URL/api/webhook/status?github_username=${{ github.actor }}")
+          STATUS_RESPONSE=$(curl -sL "$PERFMON_URL/api/webhook/status?github_username=${{ github.actor }}")
           echo "Server status response: $STATUS_RESPONSE"
           
           # ตรวจสอบว่ามีคำว่า active ใน response หรือไม่ (ถ้าไม่ แสดงว่าเป็น first_sync หรือเพิ่งทำครั้งแรก)
@@ -44,20 +44,23 @@ jobs:
             
             AUTHOR_NAME=$(git log -1 --format='%an' $commit)
             AUTHOR_EMAIL=$(git log -1 --format='%ae' $commit)
-            # ป้องกันปัญหาเครื่องหมายคำพูดเบิ้ล (double quotes) ใน Message ด้วยการ escape
-            MESSAGE=$(git log -1 --format='%s' $commit | sed 's/"/\"/g' | sed 's/\/\\/g')
+            # ป้องกันปัญหาเครื่องหมายคำพูดเบิ้ล (double quotes) และ backslash ใน Message ด้วยการ escape
+            MESSAGE_JSON=$(git log -1 --format='%B' $commit | python3 -c "import sys, json; print(json.dumps(sys.stdin.read().strip()))")
             TIMESTAMP=$(git log -1 --format='%ai' $commit)
             
             # คำนวณจำนวนบรรทัดที่ เพิ่ม (+) และ ลบ (-)
             ADDITIONS=$(git diff-tree --no-commit-id --numstat -r $commit | awk '{add+=$1} END {print add+0}')
             DELETIONS=$(git diff-tree --no-commit-id --numstat -r $commit | awk '{del+=$2} END {print del+0}')
             
-            COMMITS_JSON="$COMMITS_JSON{\"id\":\"$commit\",\"message\":\"$MESSAGE\",\"timestamp\":\"$TIMESTAMP\",\"lines_added\":$ADDITIONS,\"lines_deleted\":$DELETIONS}"
+            COMMITS_JSON="$COMMITS_JSON{\"id\":\"$commit\",\"message\":$MESSAGE_JSON,\"timestamp\":\"$TIMESTAMP\",\"lines_added\":$ADDITIONS,\"lines_deleted\":$DELETIONS}"
           done
           COMMITS_JSON="$COMMITS_JSON]"
           
           # 3. จัดเตรียม JSON Payload ส่งไปยังระบบ PerfMon
-          PAYLOAD="{\"ref\":\"${{ github.ref }}\",\"github_username\":\"${{ github.actor }}\",\"commits\":$COMMITS_JSON}"
+          PAYLOAD="{\"ref\":\"${{ github.ref }}\",\"github_username\":\"${{ github.actor }}\",\"repository\":\"${{ github.repository }}\",\"commits\":$COMMITS_JSON}"
           
           # 4. ยิงข้อมูลส่งมายังเครื่องผ่าน Webhook URL
-          curl -X POST             -H "Content-Type: application/json"             -d "$PAYLOAD"             "$PERFMON_URL/api/webhook"
+          curl -sL -X POST \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD" \
+            "$PERFMON_URL/api/webhook"
